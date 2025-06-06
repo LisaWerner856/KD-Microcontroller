@@ -1,30 +1,27 @@
 #include "pitches.h"
 
-const int gameTones[] = { NOTE_G3, NOTE_C4, NOTE_E4, NOTE_G5 };
-
-const int arrayLenght = 4;
+const int arrayLength = 4;
 // --- Pin setup --- //
 // 2 = green, 4 = red, 6 = blue, 8 = yellow
-const int ledArray[arrayLenght] = { 2, 4, 6, 8 };
+const int ledArray[arrayLength] = { 2, 4, 6, 8 };
 // 3 = green button, 5 = red button, 7 = blue button, 9 = yellow button
-const int buttonArray[arrayLenght] = { 3, 5, 7, 9 };
+const int buttonArray[arrayLength] = { 3, 5, 7, 9 };
 const int piezoPin = 10;
 // --- --- --- --- --- //
 
+const int gameTones[] = { NOTE_G3, NOTE_C4, NOTE_E4, NOTE_G5 };
 long randNumber;
 
 // const int gameLength = 100;
 const int gameLength = 5;
 int gameSequence[gameLength] = { 0 };
 int gameRound = 0;
-bool roundCompleted = false;
+bool roundReadyForInput = false;
 
-bool lastButtonState = HIGH;
-bool buttonState = LOW;
-
+bool gameOver = false;
 
 void setup() {
-  for (int i = 0; i < arrayLenght; i++) {
+  for (int i = 0; i < arrayLength; i++) {
     // led pins
     pinMode(ledArray[i], OUTPUT);
     // button pins
@@ -66,25 +63,69 @@ void gameOverSound() {
 
   noTone(piezoPin);
 }
+void victorySound() {
+  tone(piezoPin, NOTE_C4, 200);
+  delay(200);
+  tone(piezoPin, NOTE_E4, 200);
+  delay(200);
+  tone(piezoPin, NOTE_G4, 200);
+  delay(200);
+  tone(piezoPin, NOTE_C5, 300); // jump octave
+  delay(300);
+  
+  tone(piezoPin, NOTE_G4, 150);
+  delay(150);
+  tone(piezoPin, NOTE_B4, 150);
+  delay(150);
+  tone(piezoPin, NOTE_D5, 400);
+  delay(400);
 
+  noTone(piezoPin);
+}
+
+bool endHandled = false; 
 
 void loop() {
-  // if the game round is smaller than the game lenght (max rounds) and the roundCompleted is false.
-  if (gameRound < gameLength && !roundCompleted) {
-    // new round
-    // add random sequence to the game
-    gameSequence[gameRound] = random(0, 4);
+  if (!gameOver && gameRound < gameLength) {
 
-    gameRound++;
-    playSequence();
+    // if the game round is smaller than the game lenght (max rounds) and the roundCompleted is false.
+    if (gameRound < gameLength && !roundReadyForInput) {
+      // new round
+      // add random sequence to the game
+      gameSequence[gameRound] = random(0, arrayLength);
 
-    roundCompleted = true;
+      gameRound++;
+      playSequence();
 
-    delay(1000);
+      roundReadyForInput = true;
+
+      delay(1000);
+    }
+    bool result = checkPlayerInput();
+    roundReadyForInput = result;
+    gameOver = result;
+    
   } 
-  roundCompleted = checkPlayerInput();
+  if (gameOver && !endHandled){
+    endHandled = true;
+    gameOverSound();
+    blinkLights();
+    blinkLights();
+    blinkLights();
+    delay(100);
+  }
+
+  if(gameRound >= gameLength && !endHandled){
+    endHandled = true;
+    Serial.println("You win!");
+    victorySound();
+    blinkLights();
+    blinkLights();
+    blinkLights();
+  }
 }
-void blinkLights(){
+
+void blinkLights() {
   digitalWrite(ledArray[0], HIGH);
   digitalWrite(ledArray[1], HIGH);
   digitalWrite(ledArray[2], HIGH);
@@ -94,7 +135,7 @@ void blinkLights(){
   digitalWrite(ledArray[1], LOW);
   digitalWrite(ledArray[2], LOW);
   digitalWrite(ledArray[3], LOW);
-  delay(500);
+  delay(100);
 }
 void playSequence() {
   // bleep bloop game things
@@ -108,46 +149,52 @@ void playSequence() {
     delay(500);
     digitalWrite(ledArray[gameSequence[i]], LOW);
     noTone(piezoPin);
-    delay(500);
+    delay(100);
   }
 }
-
 int playerInput() {
-  // loop over all the buttons and see if any of them are pressed
-  for (int i = 0; i < arrayLenght; i++) {
+  for (int i = 0; i < arrayLength; i++) {
     if (digitalRead(buttonArray[i]) == LOW) {
-      Serial.print("Pressed: ");
-      lastButtonState == LOW;
-      Serial.println(i);
-      return i;
+      delay(10);  // debounce delay
+
+      // Check again after delay to confirm it's still pressed
+      if (digitalRead(buttonArray[i]) == LOW) {
+        digitalWrite(ledArray[i], HIGH);
+        tone(piezoPin, gameTones[i]);
+        // Wait for release
+        while (digitalRead(buttonArray[i]) == LOW) {
+          // do nothing, just wait
+        }
+        digitalWrite(ledArray[i], LOW);
+        noTone(piezoPin);
+       
+        Serial.print("Pressed: ");
+        Serial.println(i);
+        return i;
+      }
     }
   }
-  // return value for if no button was pressed
-  return -1;
+
+  return -1;  // no valid press
 }
 
 bool checkPlayerInput() {
-  Serial.print("Game round: ");
+  Serial.println("");
+  Serial.print("Round");
   Serial.println(gameRound);
   for (int i = 0; i < gameRound; i++) {
-    int expectedButton = gameSequence[i];
-    int actualButtonPressed = playerInput();
-    while(actualButtonPressed == -1){
-      actualButtonPressed = playerInput();
+    int input = playerInput();
+    while (input == -1) {
+      input = playerInput();
     }
-    if (actualButtonPressed != expectedButton && lastButtonState == LOW) {
-      Serial.println("Wrong");
-      gameOverSound();
-      blinkLights();
-      blinkLights();
-      blinkLights();
-      lastButtonState == HIGH;
-      return false;
-    }
-    else {
-      Serial.println("Correct!");
-      lastButtonState == HIGH;
+    if(input != gameSequence[i]){
+      Serial.println("Game over!");
       return true;
     }
   }
+  delay(200);
+    blinkLights();
+    levelUpSound();
+    delay(100);
+  return false;
 }
