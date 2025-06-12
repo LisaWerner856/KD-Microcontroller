@@ -73,7 +73,6 @@ void waitForButtonPress(int buttonPin) {
   while (buttonPressed == LOW) {
     Serial.println("No button detected yet...");
     buttonPressed = digitalRead(buttonPin);
-    Serial.println(buttonPressed);
     Serial.println(digitalRead(buttonPin));
   }
   Serial.println("Sucess~");

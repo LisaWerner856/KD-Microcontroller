@@ -16,26 +16,10 @@ long randNumber;
 const int gameLength = 5;
 int gameSequence[gameLength] = { 0 };
 int gameRound = 0;
+
 bool roundReadyForInput = false;
-
+bool endHandled = false;
 bool gameOver = false;
-
-void setup() {
-  for (int i = 0; i < arrayLength; i++) {
-    // led pins
-    pinMode(ledArray[i], OUTPUT);
-    // button pins
-    pinMode(buttonArray[i], INPUT_PULLUP);
-  }
-  // piezo pin
-  pinMode(piezoPin, OUTPUT);
-
-  Serial.begin(9600);
-
-  // Seed the random
-  // Make sure nothing is plugged into the A3 pin!!!
-  randomSeed(analogRead(A3));
-}
 
 void levelUpSound() {
   tone(piezoPin, NOTE_E4);
@@ -60,7 +44,6 @@ void gameOverSound() {
   delay(300);
   tone(piezoPin, NOTE_CS5);
   delay(300);
-
   noTone(piezoPin);
 }
 void victorySound() {
@@ -70,9 +53,9 @@ void victorySound() {
   delay(200);
   tone(piezoPin, NOTE_G4, 200);
   delay(200);
-  tone(piezoPin, NOTE_C5, 300); // jump octave
+  tone(piezoPin, NOTE_C5, 300);  // jump octave
   delay(300);
-  
+
   tone(piezoPin, NOTE_G4, 150);
   delay(150);
   tone(piezoPin, NOTE_B4, 150);
@@ -83,7 +66,44 @@ void victorySound() {
   noTone(piezoPin);
 }
 
-bool endHandled = false; 
+void setup() {
+  for (int i = 0; i < arrayLength; i++) {
+    // led pins
+    pinMode(ledArray[i], OUTPUT);
+    // button pins
+    pinMode(buttonArray[i], INPUT_PULLUP);
+  }
+  // piezo pin
+  pinMode(piezoPin, OUTPUT);
+
+  Serial.begin(9600);
+
+  // Seed the random
+  // Make sure nothing is plugged into the A3 pin!!!
+  randomSeed(analogRead(A3));
+
+  blinkLights();
+  blinkLights();
+  blinkLights();
+  // Start game sound
+  tone(piezoPin, NOTE_G4, 150);
+  delay(150);
+  tone(piezoPin, NOTE_A4, 150);
+  delay(150);
+  tone(piezoPin, NOTE_B4, 150);
+  delay(150);
+  tone(piezoPin, NOTE_E5, 300);  // bright jump!
+  delay(300);
+
+  tone(piezoPin, NOTE_D5, 200);
+  delay(200);
+  tone(piezoPin, NOTE_G5, 400);  // solid finish
+  delay(400);
+
+  noTone(piezoPin);
+  // Little delay to seperate startup from first beep
+  delay(500);
+}
 
 void loop() {
   if (!gameOver && gameRound < gameLength) {
@@ -104,9 +124,8 @@ void loop() {
     bool result = checkPlayerInput();
     roundReadyForInput = result;
     gameOver = result;
-    
-  } 
-  if (gameOver && !endHandled){
+  }
+  if (gameOver && !endHandled) {
     endHandled = true;
     gameOverSound();
     blinkLights();
@@ -115,7 +134,7 @@ void loop() {
     delay(100);
   }
 
-  if(gameRound >= gameLength && !endHandled){
+  if (gameRound >= gameLength && !endHandled) {
     endHandled = true;
     Serial.println("You win!");
     victorySound();
@@ -137,13 +156,9 @@ void blinkLights() {
   digitalWrite(ledArray[3], LOW);
   delay(100);
 }
+// power led's  and play sound
 void playSequence() {
-  // bleep bloop game things
-  // Serial.print("Sequence: ");
   for (int i = 0; i < gameRound; i++) {
-    // Serial.print(gameSequence[i]);
-    // Serial.print(", ");
-    // light up light and play sound
     digitalWrite(ledArray[gameSequence[i]], HIGH);
     tone(piezoPin, gameTones[gameSequence[i]]);
     delay(500);
@@ -152,6 +167,8 @@ void playSequence() {
     delay(100);
   }
 }
+
+// returns which button the player pressed, only detects button down press
 int playerInput() {
   for (int i = 0; i < arrayLength; i++) {
     if (digitalRead(buttonArray[i]) == LOW) {
@@ -167,7 +184,7 @@ int playerInput() {
         }
         digitalWrite(ledArray[i], LOW);
         noTone(piezoPin);
-       
+
         Serial.print("Pressed: ");
         Serial.println(i);
         return i;
@@ -178,6 +195,7 @@ int playerInput() {
   return -1;  // no valid press
 }
 
+// checks if the player input corresponds to the expected input
 bool checkPlayerInput() {
   Serial.println("");
   Serial.print("Round");
@@ -187,14 +205,17 @@ bool checkPlayerInput() {
     while (input == -1) {
       input = playerInput();
     }
-    if(input != gameSequence[i]){
+    if (input != gameSequence[i]) {
       Serial.println("Game over!");
       return true;
     }
   }
+  if (gameRound >= gameLength) {
+    return false;
+  }
   delay(200);
-    blinkLights();
-    levelUpSound();
-    delay(100);
+  blinkLights();
+  levelUpSound();
+  delay(100);
   return false;
 }
