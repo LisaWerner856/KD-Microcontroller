@@ -14,8 +14,8 @@ A list of components is included below.
 | Piezo buzzer | 1 | |
 | Resistors | 4 | 220 Ohm |
 
-## Schematic
-![Arduino Uno schematic for Simon Says project](../simon-says-game/simonsays-schematic_schem.png)
+## Circuit Schematic
+<img src="simonsays-schematic_schem.png" width="500">
 
 ## Future plans (for aestetics)
 In the future I plan on replacing the 12mm push buttons with 16mm push button (reset) with 6.3V led lighting.
